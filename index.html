@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -155,6 +156,14 @@ html, body {
 }
 
 .add-initiative-btn:hover { opacity: 0.85; }
+
+.resetbtn {
+  padding: 5px 12px; border-radius: 2px; font-size: 11px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.25);
+  background: transparent; transition: all 0.12s; letter-spacing: 0.06em;
+  font-family: inherit; font-weight: 600; text-transform: uppercase;
+}
+.resetbtn:hover { border-color: rgba(255,80,80,0.4); color: #ff5050; }
 
 /* ── SUMMARY BAR ── */
 .summarybar {
@@ -698,6 +707,7 @@ create policy "public access" on runway_initiatives
         <button class="vtab" id="tab-board" onclick="setView('board')">Board</button>
       </div>
       <button class="add-initiative-btn" onclick="addInitiative()">+ New Initiative</button>
+      <button class="resetbtn" onclick="resetDemo()">↺ Reset</button>
     </div>
   </div>
 
@@ -1300,6 +1310,26 @@ async function startApp() {
 }
 
 // ── COPY SQL ──
+async function resetDemo() {
+  if (!confirm('Reset all demo data back to the original? This cannot be undone.')) return;
+  setSaveStatus('saving', 'Resetting…');
+  try {
+    const existing = await dbSelect('runway_initiatives');
+    if (existing && existing.length) {
+      await Promise.all(existing.map(i => dbDelete('runway_initiatives', i.id)));
+    }
+    state.initiatives = [];
+    state.activeId = null;
+    await seedInitiatives();
+    setSaveStatus('saved', 'Reset complete');
+    setTimeout(() => setSaveStatus('', ''), 2000);
+    render();
+  } catch(e) {
+    setSaveStatus('error', 'Reset failed');
+    console.error(e);
+  }
+}
+
 function copySql() {
   const sql = document.querySelector('.sql-pre').textContent;
   navigator.clipboard.writeText(sql).then(() => {
@@ -1311,10 +1341,15 @@ function copySql() {
 
 // ── BOOT ──
 (async function boot() {
-  API_URL = 'https://ylyqeunhmdchceaulzty.supabase.co';
-  API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlseXFldW5obWRjaGNlYXVsenR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0Mjc1MTcsImV4cCI6MjA5MTAwMzUxN30.w1Pw-ouUa6ilfC0Y84XM9KWyK7tooAohsqxmllwzRjk';
-  await startApp();
-})();
+  const saved = localStorage.getItem(CREDS_KEY);
+  if (saved) {
+    try {
+      const { url, key } = JSON.parse(saved);
+      API_URL = url; API_KEY = key;
+      await startApp();
+      return;
+    } catch(e) { localStorage.removeItem(CREDS_KEY); }
+  }
   document.getElementById('loading').style.display = 'none';
   document.getElementById('setup').style.display = 'flex';
 })();
