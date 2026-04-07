@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runway — Initiative Launch Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Ultra&family=Questrial&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:    #0c0c0c;
+  --dark:     #111111;
+  --mid-dark: #1a1a1a;
+  --border:   rgba(255,255,255,0.08);
+  --border2:  rgba(255,255,255,0.14);
+  --orange:   #ff5400;
+  --orange-dim: rgba(255,84,0,0.1);
+  --white:    #FAFAF8;
+  --muted:    rgba(255,255,255,0.4);
+  --dim:      rgba(255,255,255,0.18);
+
+  --todo:     rgba(255,255,255,0.15);
+  --inprog:   #ff5400;
+  --review:   rgba(255,84,0,0.5);
+  --done:     rgba(255,255,255,0.35);
+
+  --main-bg:  #F0F0EC;
+  --main-bg2: #E8E8E4;
+
+  --tx:       #0c0c0c;
+  --tx-mid:   #444440;
+  --tx-dim:   #888880;
+
+  --green:    #4caf7d;
+}
+
+.detail { background: var(--main-bg); }
+.board  { background: var(--main-bg); }
+
+.detail .detail-title-input         { color: var(--tx); }
+.detail .meta-label                 { color: var(--tx-dim); }
+.detail .meta-input                 { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.1); color: var(--tx); }
+.detail .meta-input::placeholder    { color: var(--tx-dim); }
+.detail .meta-input:focus           { border-color: rgba(255,84,0,0.4); }
+.detail .task-name-input            { color: var(--tx); }
+.detail .task-name-input::placeholder { color: var(--tx-dim); }
+.detail .task-owner-input           { color: var(--tx-mid); }
+.detail .task-owner-input::placeholder { color: var(--tx-dim); }
+.detail .task-owner-input:focus     { color: var(--tx); border-bottom-color: rgba(0,0,0,0.2); }
+.detail .task-row                   { border-bottom-color: rgba(0,0,0,0.06); }
+.detail .task-row:hover             { background: rgba(0,0,0,0.03); }
+.detail .task-section-head          { border-bottom-color: rgba(0,0,0,0.08); }
+.detail .task-section-label         { color: var(--tx-dim); }
+.detail .add-task-btn               { color: var(--tx-dim); }
+.detail .add-task-btn:hover         { color: var(--orange); }
+.detail .task-del                   { color: rgba(0,0,0,0.2); }
+.detail .task-del:hover             { color: #cc2200; }
+.detail .progress-label             { color: var(--tx-dim); }
+.detail .progress-track             { background: rgba(0,0,0,0.08); }
+.detail .btn-ghost                  { color: var(--tx-mid); border-color: rgba(0,0,0,0.15); }
+.detail .btn-ghost:hover            { color: var(--tx); border-color: rgba(0,0,0,0.3); }
+.detail .btn-danger                 { color: rgba(180,40,40,0.6); border-color: rgba(180,40,40,0.2); }
+.detail .btn-danger:hover           { color: #cc2200; border-color: rgba(180,40,40,0.5); }
+.detail .spill-todo, .detail .spill-inprog, .detail .spill-review, .detail .spill-done { color: rgba(0,0,0,0.3); }
+.detail .spill-todo.active          { background: rgba(0,0,0,0.08); color: var(--tx); border-color: rgba(0,0,0,0.15); }
+.detail .spill-inprog.active        { background: rgba(255,84,0,0.12); color: var(--orange); border-color: rgba(255,84,0,0.3); }
+.detail .spill-review.active        { background: rgba(255,84,0,0.07); color: rgba(200,60,0,0.85); border-color: rgba(255,84,0,0.2); }
+.detail .spill-done.active          { background: rgba(40,140,90,0.1); color: #2a7a50; border-color: rgba(40,140,90,0.25); }
+.board .board-card                  { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.08); }
+.board .board-card:hover            { background: #fff; border-color: rgba(0,0,0,0.15); }
+.board .board-card-task             { color: var(--tx); }
+.board .board-card-owner            { color: var(--tx-dim); }
+.board .board-col-head.todo         { background: rgba(0,0,0,0.05); }
+.board .board-col-count             { color: var(--tx-dim); }
+.board .done .board-col-label       { color: #2a7a50; }
+
+html, body {
+  height: 100%;
+  background: var(--black);
+  color: var(--white);
+  font-family: 'Questrial', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ── SHELL ── */
+.shell { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOPBAR ── */
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 52px;
+  background: var(--black);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+
+.wordmark {
+  font-family: 'Ultra', serif;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.wordmark span { color: var(--orange); }
+
+.divider {
+  width: 1px; height: 16px;
+  background: var(--border2);
+}
+
+.app-name {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.view-toggle {
+  display: flex; gap: 2px;
+}
+
+.vtab {
+  padding: 5px 14px;
+  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted); background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px; cursor: pointer;
+  font-family: 'Questrial', sans-serif;
+  transition: all 0.15s;
+}
+
+.vtab:hover { color: var(--white); }
+.vtab.active {
+  color: var(--orange);
+  border-color: rgba(255,84,0,0.3);
+  background: rgba(255,84,0,0.06);
+}
+
+.add-initiative-btn {
+  padding: 6px 16px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--black); background: var(--orange);
+  border: none; border-radius: 2px; cursor: pointer;
+  font-family: 'Questrial', sans-serif;
+  transition: opacity 0.15s;
+}
+
+.add-initiative-btn:hover { opacity: 0.85; }
+
+/* ── SUMMARY BAR ── */
+.summarybar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 32px;
+  padding: 10px 24px;
+  background: var(--dark);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sv {
+  font-family: 'Ultra', serif;
+  font-size: 18px;
+  color: var(--white);
+  display: block;
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sv.orange { color: var(--orange); }
+.sv.green  { color: var(--green); }
+
+.summary-item { display: flex; flex-direction: column; gap: 2px; }
+
+.summary-right { margin-left: auto; display: flex; gap: 32px; align-items: center; }
+
+/* ── MAIN AREA ── */
+.main-area {
+  flex: 1; overflow: hidden;
+  display: flex;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--dark);
+  display: flex; flex-direction: column;
+}
+
+.sidebar-head {
+  padding: 16px 16px 10px;
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.initiative-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.initiative-item:hover { background: rgba(255,255,255,0.03); }
+
+.initiative-item.active {
+  background: rgba(255,84,0,0.06);
+  border-left-color: var(--orange);
+}
+
+.pi-name {
+  font-size: 12px;
+  color: var(--white);
+  margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.pi-progress-track {
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.pi-progress-fill {
+  height: 100%;
+  background: var(--orange);
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.pi-progress-fill.complete { background: var(--green); }
+
+.pi-meta {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--dim); letter-spacing: 0.04em;
+}
+
+.pi-status-pills {
+  display: flex; gap: 3px; margin-top: 6px;
+}
+
+.mini-pill {
+  font-size: 9px; padding: 1px 6px; border-radius: 2px;
+  letter-spacing: 0.04em;
+}
+
+.mini-todo     { background: rgba(255,255,255,0.08); color: var(--muted); }
+.mini-inprog   { background: rgba(255,84,0,0.2); color: var(--orange); }
+.mini-review   { background: rgba(255,84,0,0.1); color: rgba(255,84,0,0.7); }
+.mini-done     { background: rgba(255,255,255,0.06); color: var(--dim); }
+
+/* ── DETAIL VIEW ── */
+.detail {
+  flex: 1; overflow-y: auto;
+  padding: 28px 32px;
+  display: none;
+  background: var(--main-bg);
+}
+
+.detail.active { display: block; }
+
+.detail-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px; gap: 16px;
+}
+
+.detail-title-wrap { flex: 1; }
+
+.detail-title {
+  font-family: 'Ultra', serif;
+  font-size: 28px; letter-spacing: -0.01em; line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.detail-title-input {
+  font-family: 'Ultra', serif;
+  font-size: 28px; letter-spacing: -0.01em; line-height: 1.1;
+  background: transparent; border: none; outline: none;
+  color: var(--white); width: 100%;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+  padding-bottom: 2px;
+}
+
+.detail-title-input:focus { border-bottom-color: var(--orange); }
+
+.detail-meta-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;
+}
+
+.meta-field {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.meta-label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim);
+}
+
+.meta-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 6px 10px;
+  font-size: 12px; color: var(--white);
+  font-family: 'Questrial', sans-serif;
+  outline: none;
+  min-width: 140px;
+  transition: border-color 0.15s;
+}
+
+.meta-input:focus { border-color: rgba(255,84,0,0.4); }
+.meta-input::placeholder { color: var(--dim); }
+
+.detail-actions { display: flex; gap: 8px; align-items: flex-start; }
+
+.action-btn {
+  padding: 7px 16px; border-radius: 2px;
+  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
+  font-family: 'Questrial', sans-serif; cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { color: var(--white); border-color: var(--border2); }
+
+.btn-danger {
+  background: transparent; color: rgba(255,80,80,0.5);
+  border: 1px solid rgba(255,80,80,0.2);
+}
+
+.btn-danger:hover { color: #ff5050; border-color: rgba(255,80,80,0.5); }
+
+/* ── TASK SECTION ── */
+.task-section { margin-bottom: 32px; }
+
+.task-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.task-section-label {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim); display: flex; align-items: center; gap: 8px;
+}
+
+.task-section-label::before {
+  content: '';
+  display: block; width: 16px; height: 1px;
+  background: var(--orange);
+}
+
+.add-task-btn {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--dim); background: transparent; border: none; cursor: pointer;
+  font-family: 'Questrial', sans-serif;
+  transition: color 0.15s;
+}
+
+.add-task-btn:hover { color: var(--orange); }
+
+/* ── TASK ROW ── */
+.task-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 280px 28px;
+  gap: 8px; align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+
+.task-row:hover { background: rgba(255,255,255,0.02); }
+
+.task-name-input {
+  background: transparent; border: none; outline: none;
+  color: var(--white); font-family: 'Questrial', sans-serif;
+  font-size: 13px; width: 100%;
+}
+
+.task-name-input::placeholder { color: var(--dim); }
+
+.task-owner-input {
+  background: transparent; border: none; outline: none;
+  color: var(--muted); font-family: 'Questrial', sans-serif;
+  font-size: 12px; width: 100%;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s; padding-bottom: 1px;
+}
+
+.task-owner-input:focus { border-bottom-color: var(--border2); color: var(--white); }
+.task-owner-input::placeholder { color: var(--dim); }
+
+/* status pills */
+.status-row { display: flex; gap: 3px; }
+
+.spill {
+  padding: 3px 9px; border-radius: 2px;
+  font-size: 10px; letter-spacing: 0.04em;
+  cursor: pointer; border: 1px solid transparent;
+  font-family: 'Questrial', sans-serif;
+  transition: all 0.15s; white-space: nowrap;
+}
+
+.spill-todo   { color: var(--muted); border-color: transparent; }
+.spill-inprog { color: var(--muted); border-color: transparent; }
+.spill-review { color: var(--muted); border-color: transparent; }
+.spill-done   { color: var(--muted); border-color: transparent; }
+
+.spill-todo.active   { background: rgba(255,255,255,0.1); color: var(--white); border-color: rgba(255,255,255,0.15); }
+.spill-inprog.active { background: rgba(255,84,0,0.18); color: var(--orange); border-color: rgba(255,84,0,0.3); }
+.spill-review.active { background: rgba(255,84,0,0.08); color: rgba(255,84,0,0.7); border-color: rgba(255,84,0,0.2); }
+.spill-done.active   { background: rgba(76,175,125,0.12); color: var(--green); border-color: rgba(76,175,125,0.25); }
+
+.task-del {
+  background: transparent; border: none; color: var(--dim);
+  cursor: pointer; font-size: 12px; opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  font-family: 'Questrial', sans-serif;
+  text-align: center;
+  width: 28px;
+  padding: 0;
+  pointer-events: none;
+}
+
+.task-row:hover .task-del { opacity: 1; pointer-events: auto; }
+.task-del:hover { color: #ff5050; }
+
+/* ── BOARD VIEW ── */
+.board {
+  flex: 1; overflow-x: auto; overflow-y: hidden;
+  padding: 24px;
+  display: none;
+  gap: 16px;
+  background: var(--main-bg);
+}
+
+.board.active { display: flex; }
+
+.board-col {
+  flex-shrink: 0; width: 280px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.board-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+
+.board-col-head.todo   { background: rgba(0,0,0,0.05); }
+.board-col-head.inprog { background: rgba(255,84,0,0.12); }
+.board-col-head.review { background: rgba(255,84,0,0.07); }
+.board-col-head.done   { background: rgba(76,175,125,0.08); }
+
+.board-col-label {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+.todo   .board-col-label { color: var(--tx-dim); }
+.inprog .board-col-label { color: var(--orange); }
+.review .board-col-label { color: rgba(255,84,0,0.7); }
+.done   .board-col-label { color: var(--green); }
+
+.board-col-count {
+  font-size: 10px; color: var(--dim);
+}
+
+.board-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 14px 16px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.board-card:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border2);
+}
+
+.board-card-initiative {
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 6px;
+}
+
+.board-card-task {
+  font-size: 13px; color: var(--white); margin-bottom: 10px; line-height: 1.4;
+}
+
+.board-card-owner {
+  font-size: 11px; color: var(--dim); margin-bottom: 10px;
+}
+
+.board-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 4px;
+}
+
+.board-status-btn {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 2px; cursor: pointer;
+  font-family: 'Questrial', sans-serif; border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.board-status-btn.todo   { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.5); border-color: rgba(0,0,0,0.1); }
+.board-status-btn.inprog { background: rgba(255,84,0,0.12); color: var(--orange); border-color: rgba(255,84,0,0.3); }
+.board-status-btn.review { background: rgba(255,84,0,0.07); color: rgba(200,60,0,0.85); border-color: rgba(255,84,0,0.2); }
+.board-status-btn.done   { background: rgba(40,140,90,0.1); color: #2a7a50; border-color: rgba(40,140,90,0.25); }
+
+.board-next-btn {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 2px; cursor: pointer;
+  font-family: 'Questrial', sans-serif;
+  background: transparent; border: 1px solid rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.3); transition: all 0.15s; white-space: nowrap;
+}
+
+.board-next-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; color: var(--dim);
+  padding: 48px;
+}
+
+.empty-state h3 {
+  font-family: 'Ultra', serif;
+  font-size: 24px; letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.15);
+}
+
+.empty-state p {
+  font-size: 13px; color: var(--dim); text-align: center; max-width: 280px;
+}
+
+.empty-cta {
+  margin-top: 8px;
+  padding: 8px 24px; border-radius: 2px;
+  background: var(--orange); color: var(--black);
+  border: none; cursor: pointer;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: 'Questrial', sans-serif;
+  transition: opacity 0.15s;
+}
+
+.empty-cta:hover { opacity: 0.85; }
+
+/* ── PROGRESS BAR (detail) ── */
+.progress-section {
+  margin-bottom: 28px;
+}
+
+.progress-label {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--dim);
+}
+
+.progress-pct { color: var(--orange); font-family: 'Ultra', serif; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.progress-pct.complete-pct { color: var(--green); }
+
+.progress-track {
+  height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%; background: var(--orange); border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+
+.progress-fill.complete { background: var(--green); }
+
+/* ── LAUNCH READY BADGE ── */
+.launch-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 2px;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid rgba(76,175,125,0.3);
+  color: var(--green); background: rgba(76,175,125,0.08);
+}
+
+.launch-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+.save-status { font-size:10px;letter-spacing:0.06em;color:rgba(255,84,0,0.4);margin-right:8px;transition:color 0.3s; }
+.save-status.saving { color:rgba(255,84,0,0.6); }
+.save-status.saved  { color:#ff5400; }
+.save-status.error  { color:#ff5050; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading" style="position:fixed;inset:0;background:#0c0c0c;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px;">
+  <div style="width:24px;height:24px;border:2px solid rgba(255,84,0,0.2);border-top-color:#ff5400;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,84,0,0.6);">Connecting...</div>
+</div>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+<!-- SETUP -->
+<div id="setup" style="display:none;position:fixed;inset:0;background:#0c0c0c;z-index:998;align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:540px;background:#111;border:1px solid rgba(255,84,0,0.2);border-radius:2px;padding:36px 40px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Ultra',serif;font-size:18px;color:#FAFAF8;margin-bottom:4px;">Sassy<span style="color:#ff5400">.</span> Runway</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:28px;letter-spacing:0.04em;">First time setup</div>
+
+    <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,84,0,0.7);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span style="display:block;width:14px;height:1px;background:#ff5400;"></span>01</div>
+        <div style="font-size:13px;color:#FAFAF8;margin-bottom:4px;">Create a Supabase project</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;">Go to <a href="https://supabase.com" target="_blank" style="color:#ff5400;text-decoration:none;">supabase.com</a>, create a free project, then run this SQL in the SQL Editor:</div>
+        <div onclick="copySql()" id="sql-block" style="margin-top:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:2px;padding:14px;cursor:pointer;position:relative;transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(255,84,0,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+          <span id="sql-hint" style="position:absolute;top:8px;right:10px;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.25);">Click to copy</span>
+          <pre class="sql-pre" style="font-family:monospace;font-size:10px;color:rgba(255,84,0,0.8);line-height:1.75;white-space:pre;overflow-x:auto;margin:0;">create table runway_initiatives (
+  id text primary key,
+  sort_order integer default 0,
+  name text default '',
+  client text default '',
+  owner text default '',
+  deadline text default '',
+  tasks jsonb default '[]',
+  created_at timestamptz default now()
+);
+alter table runway_initiatives enable row level security;
+create policy "public access" on runway_initiatives
+  for all using (true);</pre>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,84,0,0.7);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span style="display:block;width:14px;height:1px;background:#ff5400;"></span>02</div>
+        <div style="font-size:13px;color:#FAFAF8;margin-bottom:4px;">Paste your credentials</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:12px;">Find these under Project Settings > API in Supabase.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.25);display:block;margin-bottom:5px;">Project URL</label>
+            <input id="sb-url" type="text" placeholder="https://xxxxxxxxxxxx.supabase.co" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:2px;padding:10px 12px;font-size:12px;color:#FAFAF8;font-family:'Questrial',sans-serif;outline:none;" onfocus="this.style.borderColor='rgba(255,84,0,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
+          </div>
+          <div>
+            <label style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.25);display:block;margin-bottom:5px;">Anon / Public Key</label>
+            <input id="sb-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:2px;padding:10px 12px;font-size:12px;color:#FAFAF8;font-family:'Questrial',sans-serif;outline:none;" onfocus="this.style.borderColor='rgba(255,84,0,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="connect-btn" onclick="connect()" style="width:100%;padding:12px;background:#ff5400;color:#0c0c0c;border:none;border-radius:2px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-family:'Questrial',sans-serif;cursor:pointer;font-weight:600;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Connect to Supabase</button>
+    <div id="setup-error" style="display:none;font-size:11px;color:#ff5050;margin-top:10px;"></div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:14px;line-height:1.6;">Your credentials are saved in your browser and never sent anywhere except your Supabase project.</div>
+  </div>
+</div>
+
+<div class="shell" id="app" style="display:none;">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="wordmark">Sassy<span>.</span></div>
+      <div class="divider"></div>
+      <div class="app-name">Runway</div>
+    </div>
+    <div class="topbar-right">
+      <span id="save-status" class="save-status"></span>
+      <div class="view-toggle">
+        <button class="vtab active" id="tab-detail" onclick="setView('detail')">Initiatives</button>
+        <button class="vtab" id="tab-board" onclick="setView('board')">Board</button>
+      </div>
+      <button class="add-initiative-btn" onclick="addInitiative()">+ New Initiative</button>
+    </div>
+  </div>
+
+  <!-- SUMMARY BAR -->
+  <div class="summarybar" id="summarybar">
+    <div class="summary-item"><span class="sv" id="s-total">0</span>initiatives</div>
+    <div class="summary-item"><span class="sv orange" id="s-inprog">0</span>in progress</div>
+    <div class="summary-item"><span class="sv" id="s-tasks">0</span>total tasks</div>
+    <div class="summary-right">
+      <div class="summary-item"><span class="sv orange" id="s-todo">0</span>to do</div>
+      <div class="summary-item"><span class="sv" id="s-review">0</span>in review</div>
+      <div class="summary-item"><span class="sv green" id="s-done">0</span>done</div>
+      <div class="summary-item"><span class="sv green" id="s-ready">0</span>launch ready</div>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="main-area">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-head">Initiatives</div>
+      <!-- populated by JS -->
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div class="detail active" id="detail-view">
+      <div class="empty-state" id="empty-state">
+        <h3>Nothing here yet.</h3>
+        <p>Create a initiative to start tracking your launch.</p>
+        <button class="empty-cta" onclick="addInitiative()">+ New Initiative</button>
+      </div>
+      <div id="initiative-detail" style="display:none"></div>
+    </div>
+
+    <!-- BOARD VIEW -->
+    <div class="board" id="board-view">
+      <!-- populated by JS -->
+    </div>
+
+  </div>
+
+  <div style="padding:8px 24px;border-top:1px solid var(--border);background:var(--black);display:flex;justify-content:flex-end;flex-shrink:0;">
+    <button onclick="disconnect()" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.2);background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:2px;padding:4px 12px;cursor:pointer;font-family:'Questrial',sans-serif;transition:all 0.15s;" onmouseover="this.style.color='#ff5050';this.style.borderColor='rgba(255,80,80,0.3)'" onmouseout="this.style.color='rgba(255,255,255,0.2)';this.style.borderColor='rgba(255,255,255,0.08)'">Disconnect</button>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──
+const CREDS_KEY = 'runway_creds';
+let API_URL = '';
+let API_KEY = '';
+
+// ── SUPABASE REST ──
+async function dbFetch(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: {
+      'apikey': API_KEY,
+      'Authorization': 'Bearer ' + API_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_URL + '/rest/v1/' + path, opts);
+  if (!res.ok) { const t = await res.text(); throw new Error(t || res.statusText); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function dbSelect(table) { return dbFetch(`${table}?order=sort_order.asc&limit=500`); }
+async function dbInsert(table, row) { return dbFetch(table, 'POST', row); }
+async function dbUpdate(table, id, patch) { return dbFetch(`${table}?id=eq.${id}`, 'PATCH', patch); }
+async function dbDelete(table, id) {
+  const opts = { method:'DELETE', headers:{ 'apikey':API_KEY,'Authorization':'Bearer '+API_KEY } };
+  const res = await fetch(API_URL + '/rest/v1/' + table + '?id=eq.' + id, opts);
+  if (!res.ok) throw new Error(res.statusText);
+}
+async function testConnection() { const d = await dbFetch('runway_initiatives?limit=1'); return Array.isArray(d); }
+
+// ── CONNECT / DISCONNECT ──
+async function connect() {
+  const url = document.getElementById('sb-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('sb-key').value.trim();
+  const btn = document.getElementById('connect-btn');
+  if (!url || !key) { showErr('Please fill in both fields.'); return; }
+  btn.disabled = true; btn.textContent = 'Connecting...';
+  document.getElementById('setup-error').style.display = 'none';
+  API_URL = url; API_KEY = key;
+  try {
+    await testConnection();
+    localStorage.setItem(CREDS_KEY, JSON.stringify({ url, key }));
+    await startApp();
+  } catch(e) {
+    API_URL = ''; API_KEY = '';
+    btn.disabled = false; btn.textContent = 'Connect to Supabase';
+    showErr('Could not connect: ' + (e.message || 'Check your URL and key, and make sure the table was created.'));
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('setup-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function disconnect() {
+  if (!confirm('Disconnect and clear saved credentials?')) return;
+  localStorage.removeItem(CREDS_KEY);
+  location.reload();
+}
+
+// ── STATE ──
+let state = { initiatives: [], activeId: null, view: 'detail' };
+let saveTimer = null;
+let pollTimer = null;
+let userIsActive = false;
+let activityTimer = null;
+
+const STATUSES = ['todo','inprog','review','done'];
+const STATUS_LABELS = { todo: 'To Do', inprog: 'In Progress', review: 'In Review', done: 'Done' };
+
+const DEFAULT_TASKS = [
+  { name: 'Define scope and objectives', status: 'todo', owner: '' },
+  { name: 'Assign team and owners', status: 'todo', owner: '' },
+  { name: 'Creative brief approved', status: 'todo', owner: '' },
+  { name: 'Assets and content ready', status: 'todo', owner: '' },
+  { name: 'QA and review complete', status: 'todo', owner: '' },
+  { name: 'Stakeholder sign-off', status: 'todo', owner: '' },
+  { name: 'Launch', status: 'todo', owner: '' },
+];
+
+// ── ACTIVITY TRACKING (pause polling during input) ──
+function markActive() {
+  userIsActive = true;
+  if (activityTimer) clearTimeout(activityTimer);
+  activityTimer = setTimeout(() => { userIsActive = false; }, 3000);
+}
+document.addEventListener('keydown', markActive);
+document.addEventListener('mousedown', markActive);
+document.addEventListener('focus', markActive, true);
+
+// ── POLLING ──
+function startPolling() {
+  pollTimer = setInterval(async () => {
+    if (userIsActive) return;
+    const active = document.activeElement;
+    if (active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.tagName==='SELECT')) return;
+    try {
+      const data = await dbSelect('runway_initiatives');
+      const incoming = (data||[]).map(r => ({ ...r, tasks: r.tasks||[] }));
+      let changed = false;
+      incoming.forEach(remote => {
+        const local = state.initiatives.find(i => i.id === remote.id);
+        if (!local) { state.initiatives.push({ ...remote }); changed = true; }
+        else if (JSON.stringify(remote) !== JSON.stringify({id:local.id,sort_order:local.sort_order,name:local.name,client:local.client,owner:local.owner,deadline:local.deadline,tasks:local.tasks})) {
+          Object.assign(local, remote); changed = true;
+        }
+      });
+      const incomingIds = new Set(incoming.map(r => r.id));
+      const before = state.initiatives.length;
+      state.initiatives = state.initiatives.filter(i => incomingIds.has(i.id));
+      if (state.initiatives.length !== before) changed = true;
+      if (changed) { state.initiatives.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); render(); }
+    } catch(e) { /* silent */ }
+  }, 5000);
+}
+
+// ── SAVE STATUS ──
+function setSaveStatus(s, msg) {
+  const el = document.getElementById('save-status');
+  el.className = 'save-status ' + s; el.textContent = msg;
+}
+
+// ── LOAD ──
+async function loadInitiatives() {
+  const data = await dbSelect('runway_initiatives');
+  state.initiatives = (data||[]).map(r => ({ ...r, tasks: r.tasks||[] }));
+  if (state.initiatives.length && !state.activeId) state.activeId = state.initiatives[0].id;
+  if (!state.initiatives.length) await seedInitiatives();
+}
+
+async function seedInitiatives() {
+  const samples = [
+    {
+      id: uid(), sort_order: 10,
+      name: 'Spring Brand Campaign', client: 'Luminary Co.', owner: 'Sarah', deadline: '15 May 2026',
+      tasks: [
+        { id: uid(), name: 'Client brief approved', status: 'done', owner: 'Sarah' },
+        { id: uid(), name: 'Creative concepts presented', status: 'done', owner: 'Marcus' },
+        { id: uid(), name: 'Copy and messaging finalised', status: 'done', owner: 'Jess' },
+        { id: uid(), name: 'Design assets in production', status: 'inprog', owner: 'Marcus' },
+        { id: uid(), name: 'Media plan confirmed', status: 'inprog', owner: 'Sarah' },
+        { id: uid(), name: 'Legal and compliance review', status: 'review', owner: 'Tom' },
+        { id: uid(), name: 'Final client sign-off', status: 'todo', owner: 'Sarah' },
+        { id: uid(), name: 'Campaign go-live', status: 'todo', owner: 'Sarah' },
+      ]
+    },
+    {
+      id: uid(), sort_order: 20,
+      name: 'Product Launch: Series 2', client: 'Novu Health', owner: 'Tom', deadline: '1 Jun 2026',
+      tasks: [
+        { id: uid(), name: 'Positioning and messaging locked', status: 'done', owner: 'Tom' },
+        { id: uid(), name: 'Landing page designed', status: 'review', owner: 'Marcus' },
+        { id: uid(), name: 'Landing page built and tested', status: 'todo', owner: 'Dev team' },
+        { id: uid(), name: 'Email sequence drafted', status: 'todo', owner: 'Jess' },
+        { id: uid(), name: 'Social assets created', status: 'todo', owner: 'Marcus' },
+        { id: uid(), name: 'Press release approved', status: 'todo', owner: 'Tom' },
+        { id: uid(), name: 'Launch day schedule confirmed', status: 'todo', owner: 'Sarah' },
+      ]
+    },
+    {
+      id: uid(), sort_order: 30,
+      name: 'Website Redesign', client: 'Internal', owner: 'Mee', deadline: 'Complete',
+      tasks: [
+        { id: uid(), name: 'Brand guidelines finalised', status: 'done', owner: 'Mee' },
+        { id: uid(), name: 'Sitemap and IA approved', status: 'done', owner: 'Mee' },
+        { id: uid(), name: 'Design system built', status: 'done', owner: 'Marcus' },
+        { id: uid(), name: 'All pages designed', status: 'done', owner: 'Marcus' },
+        { id: uid(), name: 'Development complete', status: 'done', owner: 'Dev team' },
+        { id: uid(), name: 'QA and cross-browser testing', status: 'done', owner: 'Tom' },
+        { id: uid(), name: 'Stakeholder sign-off', status: 'done', owner: 'Mee' },
+        { id: uid(), name: 'Go live', status: 'done', owner: 'Mee' },
+      ]
+    }
+  ];
+
+  for (const initiative of samples) {
+    try {
+      const data = await dbInsert('runway_initiatives', initiative);
+      const created = Array.isArray(data) ? data[0] : data;
+      state.initiatives.push({ ...created, tasks: created.tasks||[] });
+    } catch(e) { console.error('Seed failed:', e); }
+  }
+  if (state.initiatives.length) state.activeId = state.initiatives[0].id;
+}
+
+// ── SAVE INITIATIVE ──
+async function saveInitiative(id) {
+  const p = state.initiatives.find(i => i.id === id);
+  if (!p) return;
+  setSaveStatus('saving', 'Saving...');
+  try {
+    await dbUpdate('runway_initiatives', id, {
+      name: p.name, client: p.client, owner: p.owner,
+      deadline: p.deadline, tasks: p.tasks, sort_order: p.sort_order||0
+    });
+    setSaveStatus('saved', 'Saved');
+    setTimeout(() => setSaveStatus('', ''), 2000);
+  } catch(e) { setSaveStatus('error', 'Save failed'); }
+}
+
+function debounceSave(id) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveInitiative(id), 800);
+}
+
+// ── HELPERS ──
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function getProgress(initiative) {
+  const tasks = initiative.tasks || [];
+  if (!tasks.length) return 0;
+  return Math.round((tasks.filter(t => t.status === 'done').length / tasks.length) * 100);
+}
+
+function isLaunchReady(initiative) {
+  const tasks = initiative.tasks || [];
+  return tasks.length > 0 && tasks.every(t => t.status === 'done');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ADD INITIATIVE ──
+async function addInitiative() {
+  const initiative = {
+    id: uid(), sort_order: (state.initiatives.length + 1) * 10,
+    name: 'New Initiative', client: '', owner: '', deadline: '',
+    tasks: DEFAULT_TASKS.map(t => ({ ...t, id: uid() }))
+  };
+  setSaveStatus('saving', 'Saving...');
+  try {
+    const data = await dbInsert('runway_initiatives', initiative);
+    const created = Array.isArray(data) ? data[0] : data;
+    state.initiatives.push({ ...created, tasks: created.tasks||[] });
+    state.activeId = created.id;
+    setSaveStatus('saved', 'Saved');
+    setTimeout(() => setSaveStatus('', ''), 2000);
+    render();
+    setTimeout(() => { const inp = document.querySelector('.detail-title-input'); if(inp){inp.focus();inp.select();} }, 40);
+  } catch(e) { setSaveStatus('error', 'Save failed'); console.error(e); }
+}
+
+async function deleteInitiative(id) {
+  if (!confirm('Delete this initiative?')) return;
+  state.initiatives = state.initiatives.filter(i => i.id !== id);
+  state.activeId = state.initiatives.length ? state.initiatives[0].id : null;
+  render();
+  setSaveStatus('saving', 'Saving...');
+  try {
+    await dbDelete('runway_initiatives', id);
+    setSaveStatus('saved', 'Saved');
+    setTimeout(() => setSaveStatus('', ''), 2000);
+  } catch(e) { setSaveStatus('error', 'Delete failed'); }
+}
+
+function setActive(id) { state.activeId = id; state.view = 'detail'; render(); }
+function setView(v) { state.view = v; render(); }
+
+// ── UPDATE HELPERS ──
+function updInitiative(id, field, value) {
+  const p = state.initiatives.find(i => i.id === id);
+  if (p) { p[field] = value; renderSidebar(); renderSummary(); debounceSave(id); }
+}
+
+function updTask(pid, tid, field, value) {
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(t => t.id === tid);
+  if (t) { t[field] = value; renderSidebar(); renderSummary(); debounceSave(pid); }
+}
+
+function setStatus(pid, tid, status) {
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(t => t.id === tid);
+  if (t) { t.status = status; }
+  const row = document.querySelector(`[data-tid="${tid}"]`);
+  if (row) row.querySelectorAll('.spill').forEach(pill => pill.classList.toggle('active', pill.dataset.status === status));
+  renderSidebar(); renderSummary(); renderProgressBar(pid);
+  if (state.view === 'board') renderBoard();
+  debounceSave(pid);
+}
+
+function addTask(pid) {
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  p.tasks.push({ id: uid(), name: '', status: 'todo', owner: '' });
+  renderInitiativeDetail(pid); renderSidebar(); renderSummary(); debounceSave(pid);
+  setTimeout(() => { const inputs = document.querySelectorAll('.task-name-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 20);
+}
+
+function deleteTask(pid, tid) {
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  p.tasks = p.tasks.filter(t => t.id !== tid);
+  renderInitiativeDetail(pid); renderSidebar(); renderSummary(); debounceSave(pid);
+}
+
+// ── RENDER PROGRESS BAR ──
+function renderProgressBar(pid) {
+  const p = state.initiatives.find(p => p.id === pid);
+  if (!p) return;
+  const pct = getProgress(p);
+  const ready = isLaunchReady(p);
+  const fill = document.getElementById('prog-fill-' + pid);
+  const pctEl = document.getElementById('prog-pct-' + pid);
+  const badge = document.getElementById('launch-badge-' + pid);
+  if (fill) { fill.style.width = pct + '%'; fill.className = 'progress-fill' + (ready ? ' complete' : ''); }
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.className = 'progress-pct' + (ready ? ' complete-pct' : ''); }
+  if (badge) { badge.style.display = ready ? 'inline-flex' : 'none'; }
+}
+
+// ── RENDER SIDEBAR ──
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  let html = '<div class="sidebar-head">Initiatives</div>';
+  if (!state.initiatives.length) {
+    html += '<div style="padding:16px;font-size:12px;color:var(--dim)">No initiatives yet.</div>';
+  } else {
+    state.initiatives.forEach(p => {
+      const pct = getProgress(p);
+      const ready = isLaunchReady(p);
+      const tasks = p.tasks || [];
+      const counts = { todo: 0, inprog: 0, review: 0, done: 0 };
+      tasks.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
+      html += `
+      <div class="initiative-item ${p.id === state.activeId ? 'active' : ''}" onclick="setActive('${p.id}')">
+        <div class="pi-name">${esc(p.name) || 'Untitled Initiative'}</div>
+        <div class="pi-progress-track">
+          <div class="pi-progress-fill ${ready ? 'complete' : ''}" style="width:${pct}%"></div>
+        </div>
+        <div class="pi-meta">
+          <span>${pct}% complete</span>
+          <span>${tasks.length} tasks</span>
+        </div>
+        <div class="pi-status-pills">
+          ${counts.todo    ? `<span class="mini-pill mini-todo">${counts.todo} to do</span>` : ''}
+          ${counts.inprog  ? `<span class="mini-pill mini-inprog">${counts.inprog} active</span>` : ''}
+          ${counts.review  ? `<span class="mini-pill mini-review">${counts.review} review</span>` : ''}
+          ${counts.done    ? `<span class="mini-pill mini-done">${counts.done} done</span>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  sidebar.innerHTML = html;
+}
+
+// ── RENDER PROJECT DETAIL ──
+function renderInitiativeDetail(pid) {
+  const p = state.initiatives.find(p => p.id === pid);
+  if (!p) return;
+  const pct = getProgress(p);
+  const ready = isLaunchReady(p);
+
+  // group tasks by status
+  const groups = {
+    todo:   p.tasks.filter(t => t.status === 'todo'),
+    inprog: p.tasks.filter(t => t.status === 'inprog'),
+    review: p.tasks.filter(t => t.status === 'review'),
+    done:   p.tasks.filter(t => t.status === 'done'),
+  };
+
+  const taskRow = (t) => `
+  <div class="task-row" data-tid="${t.id}">
+    <input class="task-name-input" type="text" value="${esc(t.name)}" placeholder="Task name..."
+      oninput="updTask('${pid}','${t.id}','name',this.value)" />
+    <input class="task-owner-input" type="text" value="${esc(t.owner)}" placeholder="Owner"
+      oninput="updTask('${pid}','${t.id}','owner',this.value)" />
+    <div class="status-row">
+      ${STATUSES.map(s => `<button class="spill spill-${s} ${t.status===s?'active':''}"
+        data-status="${s}" onclick="setStatus('${pid}','${t.id}','${s}')">${STATUS_LABELS[s]}</button>`).join('')}
+    </div>
+    <button class="task-del" onclick="deleteTask('${pid}','${t.id}')">✕</button>
+  </div>`;
+
+  const taskSection = (statusKey, label) => {
+    const tasks = groups[statusKey];
+    if (!tasks.length) return '';
+    return `
+    <div class="task-section">
+      <div class="task-section-head">
+        <span class="task-section-label">${label}</span>
+      </div>
+      ${tasks.map(taskRow).join('')}
+    </div>`;
+  };
+
+  document.getElementById('initiative-detail').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-title-wrap">
+        <input class="detail-title-input" type="text" value="${esc(p.name)}"
+          placeholder="Initiative name..."
+          oninput="updInitiative('${pid}','name',this.value)" />
+      </div>
+      <div class="detail-actions">
+        ${ready ? `<span class="launch-badge" id="launch-badge-${pid}">Launch ready</span>` : `<span id="launch-badge-${pid}" style="display:none" class="launch-badge">Launch ready</span>`}
+        <button class="action-btn btn-danger" onclick="deleteInitiative('${pid}')">Delete</button>
+      </div>
+    </div>
+
+    <div class="detail-meta-row">
+      <div class="meta-field">
+        <div class="meta-label">Client / Team</div>
+        <input class="meta-input" type="text" value="${esc(p.client)}" placeholder="e.g. Acme Corp"
+          oninput="updInitiative('${pid}','client',this.value)" />
+      </div>
+      <div class="meta-field">
+        <div class="meta-label">Initiative Lead</div>
+        <input class="meta-input" type="text" value="${esc(p.owner)}" placeholder="e.g. Sarah"
+          oninput="updInitiative('${pid}','owner',this.value)" />
+      </div>
+      <div class="meta-field">
+        <div class="meta-label">Launch Date</div>
+        <input class="meta-input" type="text" value="${esc(p.deadline)}" placeholder="e.g. 30 Apr 2026"
+          oninput="updInitiative('${pid}','deadline',this.value)" />
+      </div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-label">
+        <span>Launch readiness</span>
+        <span class="progress-pct ${ready?'complete-pct':''}" id="prog-pct-${pid}">${pct}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill ${ready?'complete':''}" id="prog-fill-${pid}" style="width:${pct}%"></div>
+      </div>
+    </div>
+
+    <div class="task-section">
+      <div class="task-section-head">
+        <span class="task-section-label">All Tasks</span>
+        <button class="add-task-btn" onclick="addTask('${pid}')">+ Add task</button>
+      </div>
+      ${p.tasks.map(taskRow).join('')}
+      ${!p.tasks.length ? '<div style="padding:16px 0;font-size:12px;color:var(--dim)">No tasks yet. Add one above.</div>' : ''}
+    </div>
+  `;
+}
+
+// ── RENDER BOARD ──
+function setBoardStatus(pid, tid, status) {
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(t => t.id === tid);
+  if (t) { t.status = status; }
+  renderBoard();
+  renderSidebar();
+  renderSummary();
+  debounceSave(pid);
+}
+
+function renderBoard() {
+  const board = document.getElementById('board-view');
+  const allTasks = [];
+  state.initiatives.forEach(p => {
+    (p.tasks || []).forEach(t => allTasks.push({ ...t, initiativeName: p.name, pid: p.id }));
+  });
+
+  let html = '';
+  STATUSES.forEach(s => {
+    const tasks = allTasks.filter(t => t.status === s);
+    html += `
+    <div class="board-col">
+      <div class="board-col-head ${s}">
+        <span class="board-col-label">${STATUS_LABELS[s]}</span>
+        <span class="board-col-count">${tasks.length}</span>
+      </div>
+      ${tasks.map(t => {
+        const nextStatus = { todo:'inprog', inprog:'review', review:'done', done:'todo' };
+        const nextLabel  = { todo:'Start', inprog:'Review', review:'Done', done:'Reopen' };
+        return `
+      <div class="board-card">
+        <div class="board-card-initiative">${esc(t.initiativeName)}</div>
+        <div class="board-card-task">${esc(t.name) || 'Untitled task'}</div>
+        ${t.owner ? `<div class="board-card-owner">${esc(t.owner)}</div>` : ''}
+        <div class="board-card-footer">
+          <span class="board-status-btn ${t.status}">${STATUS_LABELS[t.status]}</span>
+          <button class="board-next-btn" onclick="setBoardStatus('${t.pid}','${t.id}','${nextStatus[t.status]}')">${nextLabel[t.status]} →</button>
+        </div>
+      </div>`;
+      }).join('')}
+      ${!tasks.length ? '<div style="padding:16px;font-size:11px;color:rgba(0,0,0,0.25);border:1px dashed rgba(0,0,0,0.08);border-radius:2px;text-align:center">Empty</div>' : ''}
+    </div>`;
+  });
+
+  board.innerHTML = html;
+}
+
+// ── RENDER SUMMARY ──
+function renderSummary() {
+  const initiatives = state.initiatives;
+  const allTasks = initiatives.flatMap(p => p.tasks || []);
+  const counts = { todo: 0, inprog: 0, review: 0, done: 0 };
+  allTasks.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
+  const ready = initiatives.filter(isLaunchReady).length;
+  const inprog = initiatives.filter(p => {
+    const tasks = p.tasks || [];
+    return tasks.some(t => t.status === 'inprog' || t.status === 'review');
+  }).length;
+
+  document.getElementById('s-total').textContent  = initiatives.length;
+  document.getElementById('s-inprog').textContent = inprog;
+  document.getElementById('s-tasks').textContent  = allTasks.length;
+  document.getElementById('s-todo').textContent   = counts.todo;
+  document.getElementById('s-review').textContent = counts.review;
+  document.getElementById('s-done').textContent   = counts.done;
+  document.getElementById('s-ready').textContent  = ready;
+}
+
+// ── MAIN RENDER ──
+function render() {
+  // view tabs
+  document.getElementById('tab-detail').classList.toggle('active', state.view === 'detail');
+  document.getElementById('tab-board').classList.toggle('active', state.view === 'board');
+  document.getElementById('detail-view').classList.toggle('active', state.view === 'detail');
+  document.getElementById('board-view').classList.toggle('active', state.view === 'board');
+
+  renderSidebar();
+  renderSummary();
+
+  if (state.view === 'detail') {
+    const empty = document.getElementById('empty-state');
+    const detail = document.getElementById('initiative-detail');
+    if (state.activeId && state.initiatives.find(p => p.id === state.activeId)) {
+      empty.style.display = 'none';
+      detail.style.display = 'block';
+      renderInitiativeDetail(state.activeId);
+    } else {
+      empty.style.display = 'flex';
+      detail.style.display = 'none';
+    }
+  } else {
+    renderBoard();
+  }
+}
+
+// ── APP INIT ──
+async function startApp() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('setup').style.display = 'none';
+  await loadInitiatives();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  render();
+  startPolling();
+}
+
+// ── COPY SQL ──
+function copySql() {
+  const sql = document.querySelector('.sql-pre').textContent;
+  navigator.clipboard.writeText(sql).then(() => {
+    const hint = document.getElementById('sql-hint');
+    hint.textContent = 'Copied!';
+    setTimeout(() => { hint.textContent = 'Click to copy'; }, 2000);
+  });
+}
+
+// ── BOOT ──
+(async function boot() {
+  const saved = localStorage.getItem(CREDS_KEY);
+  if (saved) {
+    try {
+      const { url, key } = JSON.parse(saved);
+      API_URL = url; API_KEY = key;
+      await startApp();
+      return;
+    } catch(e) { localStorage.removeItem(CREDS_KEY); }
+  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+})();
+</script>
