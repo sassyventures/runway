@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -392,12 +393,23 @@ html, body {
 /* ── TASK ROW ── */
 .task-row {
   display: grid;
-  grid-template-columns: 1fr 120px 280px 28px;
+  grid-template-columns: 20px 1fr 120px 280px 28px;
   gap: 8px; align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   transition: background 0.1s;
 }
+
+.task-dh {
+  width: 20px; display: flex; align-items: center; justify-content: center;
+  cursor: grab; color: rgba(0,0,0,0.2); font-size: 12px; user-select: none;
+  opacity: 0; transition: opacity 0.15s;
+}
+.task-row:hover .task-dh { opacity: 1; }
+.task-dh:active { cursor: grabbing; }
+.task-row.task-dragging { opacity: 0.3; }
+.task-row.task-drag-over-a { box-shadow: 0 -2px 0 var(--orange); }
+.task-row.task-drag-over-b { box-shadow: 0 2px 0 var(--orange); }
 
 .task-row:hover { background: rgba(255,255,255,0.02); }
 
@@ -462,6 +474,7 @@ html, body {
   display: none;
   gap: 16px;
   background: var(--main-bg);
+  align-items: flex-start;
 }
 
 .board.active { display: flex; }
@@ -469,13 +482,49 @@ html, body {
 .board-col {
   flex-shrink: 0; width: 280px;
   display: flex; flex-direction: column; gap: 8px;
+  transition: background 0.15s;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-bottom: 8px;
 }
+
+.board-col.drag-over {
+  background: rgba(255,84,0,0.04);
+  border-radius: 4px;
+}
+
+.board-card.board-dragging { opacity: 0.3; }
+.board-card[draggable="true"] { cursor: grab; }
+.board-card[draggable="true"]:active { cursor: grabbing; }
+
+/* ── OBJECTIVE FIELD ── */
+.objective-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.objective-label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--tx-dim); margin-bottom: 6px;
+}
+.objective-input {
+  width: 100%; background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.1); border-radius: 2px;
+  padding: 8px 10px; font-size: 13px; color: var(--tx);
+  font-family: 'Questrial', sans-serif; outline: none; resize: none;
+  line-height: 1.6; min-height: 52px;
+  transition: border-color 0.15s;
+}
+.objective-input:focus { border-color: rgba(255,84,0,0.4); }
+.objective-input::placeholder { color: var(--tx-dim); }
 
 .board-col-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px;
   border-radius: 2px;
   margin-bottom: 4px;
+  position: sticky; top: 0; z-index: 2;
+  flex-shrink: 0;
 }
 
 .board-col-head.todo   { background: rgba(0,0,0,0.05); }
@@ -715,12 +764,15 @@ create policy "public access" on runway_initiatives
   <div class="summarybar" id="summarybar">
     <div class="summary-item"><span class="sv" id="s-total">0</span>initiatives</div>
     <div class="summary-item"><span class="sv orange" id="s-inprog">0</span>in progress</div>
+    <div class="summary-item"><span class="sv green" id="s-ready">0</span>launch ready</div>
     <div class="summary-item"><span class="sv" id="s-tasks">0</span>total tasks</div>
     <div class="summary-right">
       <div class="summary-item"><span class="sv orange" id="s-todo">0</span>to do</div>
       <div class="summary-item"><span class="sv" id="s-review">0</span>in review</div>
       <div class="summary-item"><span class="sv green" id="s-done">0</span>done</div>
-      <div class="summary-item"><span class="sv green" id="s-ready">0</span>launch ready</div>
+      <div class="summary-item" id="s-pct-wrap" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:24px;margin-left:8px;">
+        <span class="sv orange" id="s-pct">0%</span>overall complete
+      </div>
     </div>
   </div>
 
@@ -896,6 +948,7 @@ async function seedInitiatives() {
     {
       id: uid(), sort_order: 10,
       name: 'Spring Brand Campaign', client: 'Luminary Co.', owner: 'Sarah', deadline: '15 May 2026',
+      objective: 'Launch a cohesive brand campaign across digital and OOH channels that increases brand awareness by 20% among our target demographic.',
       tasks: [
         { id: uid(), name: 'Client brief approved', status: 'done', owner: 'Sarah' },
         { id: uid(), name: 'Creative concepts presented', status: 'done', owner: 'Marcus' },
@@ -910,6 +963,7 @@ async function seedInitiatives() {
     {
       id: uid(), sort_order: 20,
       name: 'Product Launch: Series 2', client: 'Novu Health', owner: 'Tom', deadline: '1 Jun 2026',
+      objective: 'Successfully launch Series 2 to market with a full go-to-market campaign, hitting 500 signups in the first 30 days.',
       tasks: [
         { id: uid(), name: 'Positioning and messaging locked', status: 'done', owner: 'Tom' },
         { id: uid(), name: 'Landing page designed', status: 'review', owner: 'Marcus' },
@@ -954,7 +1008,8 @@ async function saveInitiative(id) {
   try {
     await dbUpdate('runway_initiatives', id, {
       name: p.name, client: p.client, owner: p.owner,
-      deadline: p.deadline, tasks: p.tasks, sort_order: p.sort_order||0
+      deadline: p.deadline, tasks: p.tasks, sort_order: p.sort_order||0,
+      objective: p.objective||''
     });
     setSaveStatus('saved', 'Saved');
     setTimeout(() => setSaveStatus('', ''), 2000);
@@ -1125,7 +1180,13 @@ function renderInitiativeDetail(pid) {
   };
 
   const taskRow = (t) => `
-  <div class="task-row" data-tid="${t.id}">
+  <div class="task-row" data-tid="${t.id}" draggable="true"
+    ondragstart="taskDragStart(event,'${pid}','${t.id}')"
+    ondragover="taskDragOver(event,'${t.id}')"
+    ondragleave="taskDragLeave(event,'${t.id}')"
+    ondrop="taskDrop(event,'${pid}','${t.id}')"
+    ondragend="taskDragEnd(event,'${t.id}')">
+    <div class="task-dh">⠿</div>
     <input class="task-name-input" type="text" value="${esc(t.name)}" placeholder="Task name..."
       oninput="updTask('${pid}','${t.id}','name',this.value)" />
     <input class="task-owner-input" type="text" value="${esc(t.owner)}" placeholder="Owner"
@@ -1180,6 +1241,12 @@ function renderInitiativeDetail(pid) {
       </div>
     </div>
 
+    <div class="objective-section">
+      <div class="objective-label">Objective</div>
+      <textarea class="objective-input" placeholder="What does success look like for this initiative?"
+        oninput="updInitiative('${pid}','objective',this.value)">${esc(p.objective||'')}</textarea>
+    </div>
+
     <div class="progress-section">
       <div class="progress-label">
         <span>Launch readiness</span>
@@ -1201,16 +1268,101 @@ function renderInitiativeDetail(pid) {
   `;
 }
 
+// ── TASK DRAG AND DROP ──
+let taskDragSrc = null;
+let taskDragPid = null;
+
+function taskDragStart(e, pid, tid) {
+  taskDragSrc = tid; taskDragPid = pid;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.querySelector(`[data-tid="${tid}"]`);
+    if (el) el.classList.add('task-dragging');
+  }, 0);
+}
+
+function taskDragOver(e, tid) {
+  e.preventDefault();
+  if (tid === taskDragSrc) return;
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('task-drag-over-a','task-drag-over-b'));
+  const el = document.querySelector(`[data-tid="${tid}"]`);
+  if (el) {
+    const rect = el.getBoundingClientRect();
+    el.classList.add(e.clientY < rect.top + rect.height / 2 ? 'task-drag-over-a' : 'task-drag-over-b');
+  }
+}
+
+function taskDragLeave(e, tid) {
+  const el = document.querySelector(`[data-tid="${tid}"]`);
+  if (el) el.classList.remove('task-drag-over-a','task-drag-over-b');
+}
+
+function taskDrop(e, pid, targetTid) {
+  e.preventDefault();
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('task-drag-over-a','task-drag-over-b','task-dragging'));
+  if (!taskDragSrc || taskDragSrc === targetTid) { taskDragSrc = null; return; }
+  const p = state.initiatives.find(i => i.id === pid);
+  if (!p) return;
+  const fromIdx = p.tasks.findIndex(t => t.id === taskDragSrc);
+  const toEl = document.querySelector(`[data-tid="${targetTid}"]`);
+  const rect = toEl ? toEl.getBoundingClientRect() : null;
+  const insertAfter = rect && e.clientY >= rect.top + rect.height / 2;
+  const [moved] = p.tasks.splice(fromIdx, 1);
+  let toIdx = p.tasks.findIndex(t => t.id === targetTid);
+  p.tasks.splice(insertAfter ? toIdx + 1 : toIdx, 0, moved);
+  taskDragSrc = null; taskDragPid = null;
+  renderInitiativeDetail(pid);
+  debounceSave(pid);
+}
+
+function taskDragEnd(e, tid) {
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('task-dragging','task-drag-over-a','task-drag-over-b'));
+  taskDragSrc = null; taskDragPid = null;
+}
+
+// ── BOARD DRAG AND DROP ──
+let boardDragSrc = null;
+
+function boardCardDragStart(e, pid, tid) {
+  boardDragSrc = { pid, tid };
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.querySelector(`[data-board-tid="${tid}"]`);
+    if (el) el.classList.add('board-dragging');
+  }, 0);
+}
+
+function boardColDragOver(e, status) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.board-col').forEach(c => c.classList.remove('drag-over'));
+  const col = document.querySelector(`[data-col-status="${status}"]`);
+  if (col) col.classList.add('drag-over');
+}
+
+function boardColDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+function boardColDrop(e, newStatus) {
+  e.preventDefault();
+  document.querySelectorAll('.board-col').forEach(c => c.classList.remove('drag-over'));
+  document.querySelectorAll('.board-card').forEach(c => c.classList.remove('board-dragging'));
+  if (!boardDragSrc) return;
+  const { pid, tid } = boardDragSrc;
+  boardDragSrc = null;
+  setBoardStatus(pid, tid, newStatus);
+}
+
 // ── RENDER BOARD ──
 function setBoardStatus(pid, tid, status) {
   const p = state.initiatives.find(i => i.id === pid);
   if (!p) return;
   const t = p.tasks.find(t => t.id === tid);
   if (t) { t.status = status; }
-  renderBoard();
-  renderSidebar();
-  renderSummary();
-  debounceSave(pid);
+  renderBoard(); renderSidebar(); renderSummary(); debounceSave(pid);
 }
 
 function renderBoard() {
@@ -1224,7 +1376,10 @@ function renderBoard() {
   STATUSES.forEach(s => {
     const tasks = allTasks.filter(t => t.status === s);
     html += `
-    <div class="board-col">
+    <div class="board-col" data-col-status="${s}"
+      ondragover="boardColDragOver(event,'${s}')"
+      ondragleave="boardColDragLeave(event)"
+      ondrop="boardColDrop(event,'${s}')">
       <div class="board-col-head ${s}">
         <span class="board-col-label">${STATUS_LABELS[s]}</span>
         <span class="board-col-count">${tasks.length}</span>
@@ -1233,7 +1388,9 @@ function renderBoard() {
         const nextStatus = { todo:'inprog', inprog:'review', review:'done', done:'todo' };
         const nextLabel  = { todo:'Start', inprog:'Review', review:'Done', done:'Reopen' };
         return `
-      <div class="board-card">
+      <div class="board-card" data-board-tid="${t.id}" draggable="true"
+        ondragstart="boardCardDragStart(event,'${t.pid}','${t.id}')"
+        ondragend="document.querySelectorAll('.board-card').forEach(c=>c.classList.remove('board-dragging'));boardDragSrc=null;">
         <div class="board-card-initiative">${esc(t.initiativeName)}</div>
         <div class="board-card-task">${esc(t.name) || 'Untitled task'}</div>
         ${t.owner ? `<div class="board-card-owner">${esc(t.owner)}</div>` : ''}
@@ -1243,7 +1400,7 @@ function renderBoard() {
         </div>
       </div>`;
       }).join('')}
-      ${!tasks.length ? '<div style="padding:16px;font-size:11px;color:rgba(0,0,0,0.25);border:1px dashed rgba(0,0,0,0.08);border-radius:2px;text-align:center">Empty</div>' : ''}
+      ${!tasks.length ? `<div style="padding:16px;font-size:11px;color:rgba(0,0,0,0.25);border:1px dashed rgba(0,0,0,0.08);border-radius:2px;text-align:center">Drop here</div>` : ''}
     </div>`;
   });
 
@@ -1261,6 +1418,7 @@ function renderSummary() {
     const tasks = p.tasks || [];
     return tasks.some(t => t.status === 'inprog' || t.status === 'review');
   }).length;
+  const pct = allTasks.length ? Math.round((counts.done / allTasks.length) * 100) : 0;
 
   document.getElementById('s-total').textContent  = initiatives.length;
   document.getElementById('s-inprog').textContent = inprog;
@@ -1269,6 +1427,11 @@ function renderSummary() {
   document.getElementById('s-review').textContent = counts.review;
   document.getElementById('s-done').textContent   = counts.done;
   document.getElementById('s-ready').textContent  = ready;
+  const pctEl = document.getElementById('s-pct');
+  if (pctEl) {
+    pctEl.textContent = pct + '%';
+    pctEl.className = 'sv ' + (pct === 100 ? 'green' : pct > 50 ? 'orange' : '');
+  }
 }
 
 // ── MAIN RENDER ──
