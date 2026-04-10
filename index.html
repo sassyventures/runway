@@ -1503,7 +1503,8 @@ function copySql() {
 }
 
 // ── BOOT ──
-(async function boot() {
+
+/* (async function boot() {
   const saved = localStorage.getItem(CREDS_KEY);
   if (saved) {
     try {
@@ -1516,4 +1517,11 @@ function copySql() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('setup').style.display = 'flex';
 })();
+*/
+
+(async function boot() {
+  API_URL = 'https://ylyqeunhmdchceaulzty.supabase.co';
+  API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlseXFldW5obWRjaGNlYXVsenR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0Mjc1MTcsImV4cCI6MjA5MTAwMzUxN30.w1Pw-ouUa6ilfC0Y84XM9KWyK7tooAohsqxmllwzRjk';
+  await startApp();
+})();  
 </script>
